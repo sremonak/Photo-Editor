@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Outer Golden Camera Aperture Ring -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F5A623"
+        android:strokeWidth="4.5"
+        android:pathData="M54,28A26,26 0 1,1 53.9,28Z" />
+    <!-- Inner Cyan Neural Lens -->
+    <path
+        android:fillColor="#38BDF8"
+        android:fillAlpha="0.25"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2.8"
+        android:pathData="M54,39A15,15 0 1,1 53.9,39Z" />
+    <!-- Precision Aperture Blades / Center Highlight -->
+    <path
+        android:fillColor="#FFC453"
+        android:pathData="M54,48A6,6 0 1,1 53.9,48Z" />
+    <path
+        android:fillColor="#F43F5E"
+        android:pathData="M71,34A3.2,3.2 0 1,1 70.9,34Z" />
+</vector>
