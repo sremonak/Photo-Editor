@@ -277,7 +277,7 @@ fun CameraScreen(vm: StudioViewModel) {
                             value = expIdx.coerceIn(range.lower.toFloat(), range.upper.toFloat()),
                             onValueChange = {
                                 expIdx = it
-                                boundCamera.cameraControl.setExposureCompensation(it.roundToInt())
+                                boundCamera.cameraControl.setExposureCompensationIndex(it.roundToInt())
                             },
                             valueRange = range.lower.toFloat()..range.upper.toFloat(),
                             modifier = Modifier.weight(1f).padding(horizontal = 10.dp).height(30.dp)
