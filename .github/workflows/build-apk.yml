@@ -30,7 +30,22 @@ jobs:
           gradle-version: '8.9'
 
       - name: Build Signed Release APK + Debug APK
-        run: gradle clean assembleRelease assembleDebug --stacktrace
+        run: |
+          set -o pipefail
+          gradle clean assembleRelease assembleDebug --stacktrace 2>&1 | tee build_output.log
+
+      - name: Report Compile Errors As Commit Comment (failure diagnostics)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "LumaCraft build failure diagnostics — commit ${{ github.sha }}"
+            echo '```'
+            grep -E "^e: |error: |Execution failed for task" build_output.log | head -60 || true
+            echo '```'
+          } > diag.md
+          gh api repos/"${{ github.repository }}"/commits/"${{ github.sha }}"/comments -f body="$(cat diag.md)" || true
 
       - name: Verify APK Signature & Identity
         run: |

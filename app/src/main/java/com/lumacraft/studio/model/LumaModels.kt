@@ -376,11 +376,21 @@ val BUILT_IN_PRESETS: List<Pair<String, EditState>> = listOf(
     ),
     "Analog Fade" to EditState(
         adjust = Adjustments(contrast = 8f, highlights = -18f, shadows = 22f, saturation = -14f, fade = 26f, grain = 20f),
-        masterCurve = listOf(0.06f, 0.28f, 0.52f, 0.75f, 0.94f)
+        curves = mapOf(
+            CurveChannel.MASTER to listOf(0.06f, 0.28f, 0.52f, 0.75f, 0.94f),
+            CurveChannel.RED to listOf(0f, 0.25f, 0.5f, 0.75f, 1f),
+            CurveChannel.GREEN to listOf(0f, 0.25f, 0.5f, 0.75f, 1f),
+            CurveChannel.BLUE to listOf(0f, 0.25f, 0.5f, 0.75f, 1f)
+        )
     ),
     "Mono Editorial" to EditState(
         adjust = Adjustments(saturation = -100f, contrast = 26f, highlights = -14f, shadows = 14f, clarity = 18f, grain = 12f),
-        masterCurve = listOf(0.02f, 0.22f, 0.5f, 0.8f, 0.98f)
+        curves = mapOf(
+            CurveChannel.MASTER to listOf(0.02f, 0.22f, 0.5f, 0.8f, 0.98f),
+            CurveChannel.RED to listOf(0f, 0.25f, 0.5f, 0.75f, 1f),
+            CurveChannel.GREEN to listOf(0f, 0.25f, 0.5f, 0.75f, 1f),
+            CurveChannel.BLUE to listOf(0f, 0.25f, 0.5f, 0.75f, 1f)
+        )
     )
 )
 
