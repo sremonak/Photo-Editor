@@ -1,22 +1,18 @@
-# Lumina RAW Pro — Native Android Photo Editor
+# VELOX — Optical Atelier & RAW Darkroom (Native Android)
 
-A flagship **Native Android** professional photo editor built with **Kotlin**, **Jetpack Compose (Material 3)**, and hardware-accelerated darkroom UI architecture.
+**VELOX** is an industrial-crafted **Native Android** professional photo editor engineered with **Kotlin 2.0**, **Jetpack Compose (Material 3 Expressive)**, and a multi-threaded real-bitmap analog & digital color pipeline.
 
-## Tech Stack
-- **100% Native Android**: Kotlin `2.0.21` + Android SDK `35` (`minSdk 26`)
-- **UI Toolkit**: Jetpack Compose + Material 3 Calibrated Darkroom Theme (`#090A0D`)
-- **CI / APK Build**: GitHub Actions (`.github/workflows/build-apk.yml`) compiling native `app-debug.apk`
+## Design & Color Philosophy
+- **Industrial Hardware Aesthetic**: Inspired by physical rangefinder lens barrels and darkroom contact sheets — **Obsidian Stage (`#08080A`)**, **Anodized Titanium (`#101115`)**, **International Vermilion (`#FF4D2D`)**, and **Champagne Brass (`#E8C58F`)**.
+- **Material 3 Expressive Ergonomics**: Floating morphing pill navigation docks, spring-physics selection transitions, cylindrical 3D rotary lens-barrel dials (`KnurledRotaryDial.kt`) with haptic detents, and edge-to-edge darkroom immersion.
+- **Bespoke Adaptive Launcher Icon**: 6-blade geometric brass aperture inside a multi-coated dark optical element with a Vermilion shutter release dot (`ic_launcher_foreground.xml` + Android 13–16 monochrome support).
 
-## UI Screens & Studio Modules (Phase 1 — UI Design)
-1. **Studio Home Hub (`StudioHomeScreen.kt`)**:
-   - Native Android Photo Picker (`PickVisualMedia`) RAW/Gallery import CTA
-   - Quick Studio Launch Tiles (*RAW Cam*, *AI Cutout*, *HSL Lab*, *Batch*)
-   - AI Neural Studio Carousel (*3D Relight*, *Bokeh f/1.2*, *Magic Eraser*, *4K Super-Res*)
-   - Non-Destructive Recent RAW Sessions Grid + Bottom Studio Navigation (`Studio`, `Drafts`, `LUT Lab`, `Engine`)
-2. **Pro Darkroom Editor (`ProEditorScreen.kt`)**:
-   - Precision Top Action Bar (*Back*, *Undo/Redo* with step counter, *Live RGB Waveform Histogram* toggle, *Split-Screen Before/After Wipe* toggle, *Export* CTA)
-   - Interactive Darkroom Viewport (`StudioViewportCanvas.kt`) with real-time `ColorMatrix` preview, draggable Before/After wipe divider, 3D Key-Light sun handle, and Rule-of-Thirds crop overlay
-   - Custom Hardware Tick-Mark Dial (`PrecisionDial.kt`) with Android haptic tick feedback
-   - Interactive 4-Channel (`RGB`, `Red`, `Green`, `Blue`) Spline Tone Curve Graph (`ToneCurveEditor.kt`)
-   - 8 Studio Dock Modules: **LUTs**, **Light**, **Curves**, **Color (WB + 8-Band HSL)**, **Optics**, **AI Lab**, **Crop**, **Layers**
-   - Material 3 **Export Master Render Bottom Sheet** (`JPG`, `PNG 16-bit`, `WEBP`, `DNG RAW`, `sRGB / Display P3 / Adobe RGB`)
+## Core Darkroom Engine (`BitmapGradeEngine.kt`)
+- **Real Pixel Processing on `Dispatchers.Default`**:
+  - **Dehancer-Class Analog Emulsion**: Separable box-blur **Red-Orange Film Halation**, **Optical Highlight Bloom**, **35mm Silver Halide Grain**, and **Matte Paper Lift**.
+  - **Capture One-Class 3-Way Color Balance Wheels**: Interactive circular chromatic trackballs for **Shadows**, **Midtones**, and **Highlights** (`ColorGradingWheels.kt`).
+  - **4-Channel Spline Tone Curves**: `Master`, `Red`, `Green`, `Blue` Catmull-Rom LUTs backed by a live **48-bin RGB Parade & Waveform Scope** (`ProSplineCurve.kt`, `RgbParadeScope.kt`).
+  - **8-Zone Selective HSL Equalizer**: Independent saturation and luminance sculpting across 8 chromatic zones.
+  - **Selective Masking Studio**: Draggable *Radial Spot*, *Linear Sky*, and *Subject Rim* masks with **Ruby Mask Isolation Overlay**.
+  - **Gallery Print Rebates & Real EXIF Extraction**: Reads real camera body, lens, ISO, focal length, aperture, and shutter speed via `ExifInterface`, stamping *Museum Matte*, *Obsidian Rebate*, or *35mm Negative* borders.
+  - **Native `MediaStore` Export & Share**: Writes full-resolution `JPEG`, `PNG`, or `WebP Lossless` masters straight to `/Pictures/VeloxAtelier` and supports Android `ACTION_EDIT` / `ACTION_SEND` intents.

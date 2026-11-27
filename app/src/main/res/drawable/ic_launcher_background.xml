@@ -1,13 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Anodized Titanium Gunmetal Chassis -->
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="12"
+                android:startY="8"
+                android:endX="96"
+                android:endY="100"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF1E2028" />
+                <item android:offset="0.5" android:color="#FF101116" />
+                <item android:offset="1.0" android:color="#FF07070A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Subtle Knurled Grip Texture Lines on Top Bezel -->
     <path
-        android:fillColor="#0B0D13"
-        android:pathData="M0,0h108v108h-108z" />
-    <path
-        android:fillColor="#161A25"
-        android:pathData="M0,0L108,0L108,54L0,72Z" />
+        android:strokeColor="#18FFFFFF"
+        android:strokeWidth="0.8"
+        android:pathData="M0,22L108,22 M0,86L108,86" />
 </vector>

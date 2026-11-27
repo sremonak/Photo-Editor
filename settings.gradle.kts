@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LuminaPhotoEditor"
+rootProject.name = "VeloxOpticalAtelier"
 include(":app")

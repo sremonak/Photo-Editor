@@ -1,27 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Outer Golden Camera Aperture Ring -->
+
+    <!-- Outer Machined Champagne Brass Lens Barrel Ring -->
+    <path
+        android:fillColor="#0D0E12"
+        android:strokeColor="#E8C58F"
+        android:strokeWidth="2.4"
+        android:pathData="M54,25A29,29 0 1,1 53.99,25Z" />
+
+    <!-- Precision Optical Distance Scale Ring -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#F5A623"
-        android:strokeWidth="4.5"
-        android:pathData="M54,28A26,26 0 1,1 53.9,28Z" />
-    <!-- Inner Cyan Neural Lens -->
+        android:strokeColor="#4DE8C58F"
+        android:strokeWidth="1.2"
+        android:pathData="M54,30A24,24 0 1,1 53.99,30Z" />
+
+    <!-- Multi-Coated Dark Optical Glass Element -->
+    <path android:pathData="M54,33.5A20.5,20.5 0 1,1 53.99,33.5Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="47"
+                android:centerY="46"
+                android:gradientRadius="24"
+                android:type="radial">
+                <item android:offset="0.0" android:color="#FF283044" />
+                <item android:offset="0.55" android:color="#FF11131C" />
+                <item android:offset="1.0" android:color="#FF07080C" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 6-Blade Precision Iris Aperture Polygon -->
     <path
-        android:fillColor="#38BDF8"
-        android:fillAlpha="0.25"
-        android:strokeColor="#38BDF8"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFE8C58F"
+        android:strokeWidth="1.8"
+        android:pathData="M54,41 L65.2,47.5 L65.2,60.5 L54,67 L42.8,60.5 L42.8,47.5 Z" />
+
+    <!-- Stylized 'V' Optical Prism Light Beam inside Lens -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
         android:strokeWidth="2.8"
-        android:pathData="M54,39A15,15 0 1,1 53.9,39Z" />
-    <!-- Precision Aperture Blades / Center Highlight -->
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M46.5,48.5 L54,61.5 L61.5,48.5" />
+
+    <!-- Specular Lens Coating Glint -->
     <path
-        android:fillColor="#FFC453"
-        android:pathData="M54,48A6,6 0 1,1 53.9,48Z" />
+        android:fillColor="#66FF785A"
+        android:pathData="M45,42A3.2,3.2 0 1,1 44.99,42Z" />
+
+    <!-- Iconic International Vermilion Red Dot at 2 o'clock Shoulder -->
     <path
-        android:fillColor="#F43F5E"
-        android:pathData="M71,34A3.2,3.2 0 1,1 70.9,34Z" />
+        android:fillColor="#FFFF4D2D"
+        android:pathData="M78,30A4.2,4.2 0 1,1 77.99,30Z" />
 </vector>

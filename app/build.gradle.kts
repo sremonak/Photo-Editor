@@ -5,15 +5,15 @@ plugins {
 }
 
 android {
-    namespace = "com.luminapro.photoeditor"
+    namespace = "studio.velox.atelier"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.luminapro.photoeditor"
+        applicationId = "studio.velox.atelier"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0-pro"
+        versionCode = 2
+        versionName = "2.0.0-atelier"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -30,7 +30,7 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
-            versionNameSuffix = "-ui-preview"
+            versionNameSuffix = "-pro"
         }
     }
 
@@ -66,5 +66,6 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.coil.compose)
+    implementation(libs.androidx.exifinterface)
     debugImplementation(libs.androidx.ui.tooling)
 }

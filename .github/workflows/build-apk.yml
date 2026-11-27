@@ -1,4 +1,4 @@
-name: Build Native Android APK
+name: Build VELOX Native Android APK
 
 on:
   push:
@@ -11,8 +11,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-debug-apk:
-    name: Assemble Lumina RAW Pro (Kotlin + Compose)
+  build-velox-apk:
+    name: Assemble VELOX Optical Atelier (Kotlin + Compose)
     runs-on: ubuntu-latest
 
     steps:
@@ -33,9 +33,9 @@ jobs:
       - name: Build Debug APK
         run: gradle assembleDebug --stacktrace
 
-      - name: Upload Native Android APK Artifact
+      - name: Upload VELOX Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Lumina-RAW-Pro-Android-APK
+          name: VELOX-Optical-Atelier-APK
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error

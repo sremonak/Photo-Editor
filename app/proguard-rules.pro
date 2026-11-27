@@ -1,2 +1,2 @@
-# Keep Compose and app classes clean
--keep class com.luminapro.photoeditor.** { *; }
+# Keep Velox Studio classes clean
+-keep class studio.velox.atelier.** { *; }
