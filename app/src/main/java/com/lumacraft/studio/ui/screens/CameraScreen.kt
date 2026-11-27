@@ -265,8 +265,9 @@ fun CameraScreen(vm: StudioViewModel) {
                 .padding(vertical = 10.dp)
         ) {
             // exposure compensation
-            if (hasPerm && camera != null) {
-                val es = camera!!.cameraInfo.exposureState
+            val boundCamera = camera
+            if (hasPerm && boundCamera != null) {
+                val es = boundCamera.cameraInfo.exposureState
                 val range = es.exposureCompensationRange
                 if (range.upper > range.lower) {
                     var expIdx by remember(es) { mutableStateOf(es.exposureCompensationIndex.toFloat()) }
@@ -276,7 +277,7 @@ fun CameraScreen(vm: StudioViewModel) {
                             value = expIdx.coerceIn(range.lower.toFloat(), range.upper.toFloat()),
                             onValueChange = {
                                 expIdx = it
-                                camera?.cameraControl?.setExposureCompensation(it.roundToInt())
+                                boundCamera.cameraControl.setExposureCompensation(it.roundToInt())
                             },
                             valueRange = range.lower.toFloat()..range.upper.toFloat(),
                             modifier = Modifier.weight(1f).padding(horizontal = 10.dp).height(30.dp)

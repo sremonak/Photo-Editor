@@ -896,6 +896,14 @@ object ImageEditEngine {
         val skinOn = state.skinSmooth > 0.5f
         if (skinOn) applySkinSmooth(px, w, h, state.skinSmooth)
 
+        // ---- painted selective mask grid (must exist before clarity grids: mask clarity reuses qBlur)
+        val maskGrid = if (state.maskStrokes.isNotEmpty()) rasterizeMaskGrid(w, h, state.maskStrokes) else null
+        val maskOn = maskGrid != null
+        val maskExpGain = 2f.pow(state.maskExposure / 80f)
+        val maskWarmK = state.maskTemp * 0.5f
+        val maskSatK = state.maskSat / 100f
+        val maskClarK = state.maskClarity / 100f * 0.6f
+
         // ---- clarity & texture grids (allocated only when used)
         val needQ = abs(a.clarity) > 0.5f || (maskOn && abs(state.maskClarity) > 0.5f)
         val needH = abs(a.texture) > 0.5f
@@ -939,15 +947,9 @@ object ImageEditEngine {
         val gLut = buildSplineLut(state.curves[CurveChannel.GREEN] ?: listOf(0f, 0.25f, 0.5f, 0.75f, 1f))
         val bLut = buildSplineLut(state.curves[CurveChannel.BLUE] ?: listOf(0f, 0.25f, 0.5f, 0.75f, 1f))
 
-        // ---- imported .cube LUT (cached parse) + painted selective mask grid
+        // ---- imported .cube LUT (cached parse)
         val activeLut = state.lutText?.let { LutEngine.parse(it) }
         val lutK = (state.lutIntensity / 100f).coerceIn(0f, 1f)
-        val maskGrid = if (state.maskStrokes.isNotEmpty()) rasterizeMaskGrid(w, h, state.maskStrokes) else null
-        val maskOn = maskGrid != null
-        val maskExpGain = 2f.pow(state.maskExposure / 80f)
-        val maskWarmK = state.maskTemp * 0.5f
-        val maskSatK = state.maskSat / 100f
-        val maskClarK = state.maskClarity / 100f * 0.6f
 
         val ne = state.naturalEnhance / 100f
         val expGain = 2f.pow(a.exposure / 60f) * (1f + ne * 0.06f)

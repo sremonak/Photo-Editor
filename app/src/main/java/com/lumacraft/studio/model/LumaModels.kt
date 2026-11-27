@@ -4,7 +4,7 @@ import android.graphics.RectF
 import android.net.Uri
 import androidx.compose.ui.graphics.Color
 
-enum class Screen { HOME, EDITOR, COLLAGE, BATCH, PRESETS, SETTINGS }
+enum class Screen { HOME, EDITOR, COLLAGE, BATCH, PRESETS, SETTINGS, CAMERA }
 
 // ---------------------------------------------------------------- adjustments
 

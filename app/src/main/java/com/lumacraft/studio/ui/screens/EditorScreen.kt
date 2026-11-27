@@ -709,7 +709,7 @@ private fun RetouchPanel(st: com.lumacraft.studio.vm.StudioUiState, vm: StudioVi
         ChipRow(
             options = listOf(BrushTool.NONE, BrushTool.BLUR, BrushTool.PIXELATE, BrushTool.ERASE, BrushTool.DRAW),
             selected = st.brushTool,
-            label = { when (it) { BrushTool.NONE -> "Off"; BrushTool.BLUR -> "Blur Brush"; BrushTool.PIXELATE -> "Pixelate"; BrushTool.ERASE -> "Object Eraser"; BrushTool.DRAW -> "Draw" } },
+            label = { when (it) { BrushTool.NONE -> "Off"; BrushTool.BLUR -> "Blur Brush"; BrushTool.PIXELATE -> "Pixelate"; BrushTool.ERASE -> "Object Eraser"; BrushTool.DRAW -> "Draw"; else -> "Mask" } },
             onSelect = { vm.setBrushTool(it) }
         )
         if (st.brushTool == BrushTool.DRAW) {
