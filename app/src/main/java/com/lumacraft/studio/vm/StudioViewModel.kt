@@ -27,6 +27,7 @@ import com.lumacraft.studio.model.ExportOptions
 import com.lumacraft.studio.model.FilterDef
 import com.lumacraft.studio.model.ALL_FILTERS
 import com.lumacraft.studio.model.HealSpot
+import com.lumacraft.studio.model.MaskPaintStroke
 import com.lumacraft.studio.model.PresetItem
 import com.lumacraft.studio.model.RecentItem
 import com.lumacraft.studio.model.Screen
@@ -40,9 +41,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 enum class TapTool { NONE, HEAL, RED_EYE, TEETH }
-enum class BrushTool { NONE, DRAW, BLUR, PIXELATE, ERASE }
+enum class BrushTool { NONE, DRAW, BLUR, PIXELATE, ERASE, MASK_PAINT, MASK_ERASE }
 
 data class StudioUiState(
     val screen: Screen = Screen.HOME,
@@ -352,6 +354,12 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
             BrushTool.PIXELATE -> edit {
                 it.copy(brushStrokes = it.brushStrokes + BrushStroke(BrushMode.PIXELATE, st.brushRadius, pts))
             }
+            BrushTool.MASK_PAINT -> edit {
+                it.copy(maskStrokes = it.maskStrokes + MaskPaintStroke(pts, st.brushRadius, false))
+            }
+            BrushTool.MASK_ERASE -> edit {
+                it.copy(maskStrokes = it.maskStrokes + MaskPaintStroke(pts, st.brushRadius, true))
+            }
             BrushTool.ERASE -> edit {
                 it.copy(brushStrokes = it.brushStrokes + BrushStroke(BrushMode.REMOVE, st.brushRadius, pts))
             }
@@ -620,6 +628,137 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
 
     fun cancelBatch() {
         batchCancel = true
+    }
+
+    // ------------------------------------------------------------ copy / paste look
+
+    fun copyLook() {
+        val json = com.lumacraft.studio.engine.StateJson.toJson(_ui.value.state)
+        try {
+            val cm = ctx().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("LumaCraft Look", json))
+        } catch (_: Exception) {
+        }
+        toast("Look copied — open another photo and paste")
+    }
+
+    fun pasteLook() {
+        val text = try {
+            val cm = ctx().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.primaryClip?.getItemAt(0)?.text?.toString()
+        } catch (_: Exception) {
+            null
+        }
+        val parsed = text?.let { com.lumacraft.studio.engine.StateJson.fromJson(it) }
+        if (parsed == null) {
+            toast("Clipboard has no LumaCraft look")
+            return
+        }
+        edit { parsed.copy(geo = it.geo) }
+        toast("Look pasted")
+    }
+
+    // ------------------------------------------------------------ .cube LUT import / export
+
+    fun importLut(name: String, text: String) {
+        val parsed = com.lumacraft.studio.engine.LutEngine.parse(text)
+        if (parsed == null) {
+            toast("Unsupported or oversized .cube file (max 33³ 3D / 4096 1D)")
+            return
+        }
+        edit { it.copy(lutName = name, lutText = text, lutIntensity = 100f) }
+        toast("LUT \"$name\" loaded (${if (parsed.is3D) "${parsed.size}³ 3D" else "${parsed.size} 1D"})")
+    }
+
+    fun removeLut() = edit { it.copy(lutName = null, lutText = null, lutIntensity = 100f) }
+
+    fun exportLutSuggestedName(): String {
+        val base = _ui.value.photoName.filter { it.isLetterOrDigit() }.ifEmpty { "Grade" }
+        return "LumaCraft_$base.cube"
+    }
+
+    fun exportLutContent(): String? {
+        val st = _ui.value
+        if (st.source == null) return null
+        return ImageEditEngine.exportGradeAsCube(st.state, 17)
+    }
+
+    // ------------------------------------------------------------ auto white balance
+
+    fun autoWhiteBalance() {
+        val src = _ui.value.source ?: return
+        viewModelScope.launch(Dispatchers.Default) {
+            val (t, ti) = ImageEditEngine.analyzeWhiteBalance(src)
+            edit { s -> s.copy(adjust = s.adjust.copy(temperature = t, tint = ti)) }
+        }
+    }
+
+    // ------------------------------------------------------------ mask helpers
+
+    fun clearMask() = edit { it.copy(maskStrokes = emptyList(), showMaskOverlay = false) }
+
+    // ------------------------------------------------------------ camera capture
+
+    fun openCapturedPhoto(captured: Bitmap, aspect: String) {
+        viewModelScope.launch {
+            _ui.update { it.copy(busy = "Preparing capture…") }
+            val bmp = withContext(Dispatchers.Default) { centerCrop(captured, aspect) }
+            history.clear()
+            redoStack.clear()
+            _ui.update {
+                it.copy(
+                    source = bmp,
+                    sourceUri = null,
+                    photoName = "Capture_${System.currentTimeMillis() % 100000}",
+                    photoInfo = "LumaCraft Camera",
+                    photoDims = "${bmp.width} × ${bmp.height}",
+                    state = EditState(),
+                    preview = null,
+                    originalPreview = null,
+                    filterThumbs = emptyMap(),
+                    tapTool = TapTool.NONE,
+                    brushTool = BrushTool.NONE,
+                    busy = null,
+                    screen = Screen.EDITOR
+                )
+            }
+            launch(Dispatchers.Default) {
+                val orig = ImageEditEngine.render(bmp, EditState(), null, 760, overlays = false)
+                _ui.update { it.copy(originalPreview = orig.bitmap.asImageBitmap()) }
+            }
+            launch(Dispatchers.Default) {
+                val maxSide = maxOf(bmp.width, bmp.height)
+                val small = if (maxSide > 640) {
+                    val sc = 640f / maxSide
+                    Bitmap.createScaledBitmap(bmp, (bmp.width * sc).toInt().coerceAtLeast(1), (bmp.height * sc).toInt().coerceAtLeast(1), true)
+                } else bmp
+                val mask = Segmenter.segment(small)
+                _ui.update { it.copy(seg = mask) }
+            }
+            launch(Dispatchers.Default) { buildFilterThumbs(bmp) }
+            runPreview()
+        }
+    }
+
+    private fun centerCrop(src: Bitmap, aspect: String): Bitmap {
+        val ratio = when (aspect) {
+            "1:1" -> 1f
+            "4:5" -> 0.8f
+            "3:4" -> 0.75f
+            "16:9" -> 16f / 9f
+            "9:16" -> 9f / 16f
+            else -> return src
+        }
+        val cur = src.width.toFloat() / src.height.coerceAtLeast(1)
+        val cw = if (cur > ratio) (src.height * ratio).roundToInt() else src.width
+        val ch = if (cur > ratio) src.height else (src.width / ratio).roundToInt()
+        val x = ((src.width - cw) / 2).coerceAtLeast(0)
+        val y = ((src.height - ch) / 2).coerceAtLeast(0)
+        return Bitmap.createBitmap(
+            src, x, y,
+            cw.coerceIn(1, src.width),
+            ch.coerceIn(1, src.height)
+        )
     }
 
     // ------------------------------------------------------------ settings

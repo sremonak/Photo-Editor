@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.lumacraft.studio.ui.screens.BatchScreen
+import com.lumacraft.studio.ui.screens.CameraScreen
 import com.lumacraft.studio.ui.screens.CollageScreen
 import com.lumacraft.studio.ui.screens.EditorScreen
 import com.lumacraft.studio.ui.screens.HomeScreen
@@ -61,6 +62,7 @@ class MainActivity : ComponentActivity() {
                             Screen.BATCH -> BatchScreen(vm)
                             Screen.PRESETS -> PresetsScreen(vm)
                             Screen.SETTINGS -> SettingsScreen(vm)
+                            Screen.CAMERA -> CameraScreen(vm)
                         }
 
                         val snackbarHostState = remember { SnackbarHostState() }

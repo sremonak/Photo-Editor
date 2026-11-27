@@ -65,6 +65,17 @@ android {
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     }
+
+    // Per-ABI APK splits: dramatically smaller downloads (native libs are per-ABI).
+    // A universal APK is still produced so any install path keeps working.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86_64")
+            isUniversalApk = true
+        }
+    }
 }
 
 dependencies {
@@ -83,5 +94,10 @@ dependencies {
     // On-device ML Kit Selfie Segmentation (bundled model, 100% offline, Apache 2.0)
     implementation(libs.mlkit.segmentation.selfie)
     implementation(libs.kotlinx.coroutines.play.services)
+    // CameraX capture module
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
     debugImplementation(libs.androidx.ui.tooling)
 }

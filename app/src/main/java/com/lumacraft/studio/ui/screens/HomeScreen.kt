@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.GridOn
 import androidx.compose.material.icons.rounded.Healing
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Layers
+import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shield
@@ -207,11 +208,11 @@ fun HomeScreen(vm: StudioViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp)
             ) {
+                FeatureCard("In-app Camera", Icons.Rounded.PhotoCamera, "Capture → edit", Modifier.weight(1f)) {
+                    vm.goScreen(com.lumacraft.studio.model.Screen.CAMERA)
+                }
                 FeatureCard("Collage Maker", Icons.Rounded.GridOn, "24 layouts", Modifier.weight(1f)) {
                     pickCollage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }
-                FeatureCard("Batch Editing", Icons.Rounded.Layers, "Apply to many", Modifier.weight(1f)) {
-                    pickBatch.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }
             }
         }
@@ -220,12 +221,23 @@ fun HomeScreen(vm: StudioViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp)
             ) {
+                FeatureCard("Batch Editing", Icons.Rounded.Layers, "Apply to many", Modifier.weight(1f)) {
+                    pickBatch.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
                 FeatureCard("Saved Presets", Icons.Rounded.Palette, "Built-in + yours", Modifier.weight(1f)) {
                     vm.goScreen(com.lumacraft.studio.model.Screen.PRESETS)
                 }
+            }
+        }
+        item {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp)
+            ) {
                 FeatureCard("Settings", Icons.Rounded.Settings, "Theme · export · privacy", Modifier.weight(1f)) {
                     vm.goScreen(com.lumacraft.studio.model.Screen.SETTINGS)
                 }
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
 

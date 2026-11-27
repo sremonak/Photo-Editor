@@ -19,6 +19,7 @@ import androidx.exifinterface.media.ExifInterface
 import com.lumacraft.studio.model.Adjustments
 import com.lumacraft.studio.model.AiState
 import com.lumacraft.studio.model.BrushStroke
+import com.lumacraft.studio.model.MaskPaintStroke
 import com.lumacraft.studio.model.CollageConfig
 import com.lumacraft.studio.model.CurveChannel
 import com.lumacraft.studio.model.EditState
@@ -49,6 +50,120 @@ data class ProcessedFrame(
     val clipShadow: Boolean,
     val clipHighlight: Boolean
 )
+
+/** Parsed Adobe .cube LUT — either a 3D (size³) or a 1D (size) table. */
+class ParsedLut(val is3D: Boolean, val size: Int, val table: FloatArray)
+
+/**
+ * Adobe .cube parser + applier with trilinear 3D / linear 1D interpolation.
+ * Accepts 3D luts up to 33³ and 1D luts up to 4096 entries.
+ */
+object LutEngine {
+    private var cacheHash: Int = 0
+    private var cacheLut: ParsedLut? = null
+
+    @Synchronized
+    fun parse(text: String): ParsedLut? {
+        val h = text.hashCode()
+        if (h == cacheHash) return cacheLut
+        val lut = doParse(text)
+        cacheHash = h
+        cacheLut = lut
+        return lut
+    }
+
+    private fun doParse(text: String): ParsedLut? {
+        var is3D = true
+        var size = 0
+        val values = ArrayList<Float>(4096)
+        for (raw in text.lineSequence()) {
+            val line = raw.trim()
+            if (line.isEmpty() || line.startsWith("#")) continue
+            when {
+                line.startsWith("LUT_3D_SIZE") -> {
+                    is3D = true
+                    size = line.substringAfter("LUT_3D_SIZE").trim().toIntOrNull() ?: 0
+                }
+                line.startsWith("LUT_1D_SIZE") -> {
+                    is3D = false
+                    size = line.substringAfter("LUT_1D_SIZE").trim().toIntOrNull() ?: 0
+                }
+                line.startsWith("TITLE") || line.startsWith("DOMAIN_") -> {}
+                else -> {
+                    val parts = line.split(Regex("[\\s,]+"))
+                    if (parts.size >= 3) {
+                        try {
+                            values.add(parts[0].toFloat())
+                            values.add(parts[1].toFloat())
+                            values.add(parts[2].toFloat())
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+            }
+        }
+        if (size <= 0) return null
+        if (is3D && size > 33) return null
+        if (!is3D && size > 4096) return null
+        val expected = if (is3D) size * size * size * 3 else size * 3
+        if (values.size < expected) return null
+        return ParsedLut(is3D, size, values.toFloatArray())
+    }
+
+    fun apply(lut: ParsedLut, r: Float, g: Float, b: Float, intensity: Float): Triple<Float, Float, Float> =
+        if (lut.is3D) apply3D(lut, r, g, b, intensity) else apply1D(lut, r, g, b, intensity)
+
+    private fun apply1D(lut: ParsedLut, r: Float, g: Float, b: Float, k: Float): Triple<Float, Float, Float> {
+        val s = lut.size
+        val t = lut.table
+        fun chan(v: Float, off: Int): Float {
+            val x = (v / 255f * (s - 1)).coerceIn(0f, (s - 1).toFloat())
+            val i = x.toInt()
+            val f = x - i
+            val lo = t[i * 3 + off] * 255f
+            val hi = if (i + 1 < s) t[(i + 1) * 3 + off] * 255f else lo
+            return lo + (hi - lo) * f
+        }
+        val nr = chan(r, 0)
+        val ng = chan(g, 1)
+        val nb = chan(b, 2)
+        return Triple(r + (nr - r) * k, g + (ng - g) * k, b + (nb - b) * k)
+    }
+
+    private fun apply3D(lut: ParsedLut, r: Float, g: Float, b: Float, k: Float): Triple<Float, Float, Float> {
+        val s = lut.size
+        val t = lut.table
+        val m = s - 1
+        fun corner(ri: Int, gi: Int, bi: Int, ch: Int): Float =
+            t[(((ri * s + gi) * s + bi) * 3) + ch]
+        fun frac(v: Float): Pair<Int, Float> {
+            val x = (v / 255f * m).coerceIn(0f, m.toFloat())
+            val i = x.toInt()
+            return i to (x - i)
+        }
+        val (r0, fr) = frac(r)
+        val (g0, fg) = frac(g)
+        val (b0, fb) = frac(b)
+        val r1 = min(r0 + 1, m)
+        val g1 = min(g0 + 1, m)
+        val b1 = min(b0 + 1, m)
+        fun lerp(a: Float, b2: Float, f: Float) = a + (b2 - a) * f
+        fun trilerp(ch: Int): Float {
+            val c000 = corner(r0, g0, b0, ch); val c100 = corner(r1, g0, b0, ch)
+            val c010 = corner(r0, g1, b0, ch); val c110 = corner(r1, g1, b0, ch)
+            val c001 = corner(r0, g0, b1, ch); val c101 = corner(r1, g0, b1, ch)
+            val c011 = corner(r0, g1, b1, ch); val c111 = corner(r1, g1, b1, ch)
+            val c00 = lerp(c000, c100, fr); val c10 = lerp(c010, c110, fr)
+            val c01 = lerp(c001, c101, fr); val c11 = lerp(c011, c111, fr)
+            val c0 = lerp(c00, c10, fg); val c1 = lerp(c01, c11, fg)
+            return lerp(c0, c1, fb) * 255f
+        }
+        val nr = trilerp(0)
+        val ng = trilerp(1)
+        val nb = trilerp(2)
+        return Triple(r + (nr - r) * k, g + (ng - g) * k, b + (nb - b) * k)
+    }
+}
 
 object ImageEditEngine {
 
@@ -640,6 +755,119 @@ object ImageEditEngine {
         }
     }
 
+    // ------------------------------------------------------------- LUT / mask / WB utilities
+
+    /** Rasterizes painted mask strokes into a quarter-resolution soft-weight grid (0..1). */
+    private fun rasterizeMaskGrid(w: Int, h: Int, strokes: List<MaskPaintStroke>): FloatArray? {
+        val gw = (w / 4).coerceAtLeast(1)
+        val gh = (h / 4).coerceAtLeast(1)
+        val grid = FloatArray(gw * gh)
+        var any = false
+        val minDim = min(w, h).toFloat()
+        for (st in strokes) {
+            val rad = ((st.radius * minDim) / 4f).coerceIn(1f, 120f)
+            for (p in st.points) {
+                val cx = p.first * gw
+                val cy = p.second * gh
+                val x0 = (cx - rad).toInt().coerceIn(0, gw - 1)
+                val x1 = (cx + rad).toInt().coerceIn(0, gw - 1)
+                val y0 = (cy - rad).toInt().coerceIn(0, gh - 1)
+                val y1 = (cy + rad).toInt().coerceIn(0, gh - 1)
+                for (yy in y0..y1) {
+                    for (xx in x0..x1) {
+                        val d = hypot(xx - cx, yy - cy)
+                        if (d < rad) {
+                            val t = (1f - d / rad).coerceIn(0f, 1f)
+                            val fall = t * t * (3f - 2f * t)
+                            val i = yy * gw + xx
+                            if (st.erase) {
+                                grid[i] = (grid[i] - fall).coerceIn(0f, 1f)
+                            } else {
+                                grid[i] = (grid[i] + fall).coerceIn(0f, 1f)
+                                any = true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return if (any) grid else null
+    }
+
+    /**
+     * Exports the current color grade as a real Adobe .cube 3D LUT: a neutral
+     * RGB cube is rendered through the full grading pipeline, then re-encoded.
+     */
+    fun exportGradeAsCube(state: EditState, size: Int = 17): String? {
+        return try {
+            val rows = size * size * size
+            val lutState = state.copy(
+                geo = GeoState(),
+                ai = AiState(cutout = false, bgColor = null, showMask = false),
+                lutText = null,
+                maskStrokes = emptyList(),
+                showMaskOverlay = false
+            )
+            val src = Bitmap.createBitmap(1, rows, Bitmap.Config.ARGB_8888)
+            val px = IntArray(rows)
+            for (i in 0 until rows) {
+                val r = (i % size).toFloat() / (size - 1)
+                val g = ((i / size) % size).toFloat() / (size - 1)
+                val b = (i / (size * size)).toFloat() / (size - 1)
+                px[i] = (0xFF shl 24) or
+                    ((r * 255f).roundToInt() shl 16) or
+                    ((g * 255f).roundToInt() shl 8) or
+                    (b * 255f).roundToInt()
+            }
+            src.setPixels(px, 0, 1, 0, 0, 1, rows)
+            val out = render(src, lutState, null, rows, overlays = false)
+            val outPx = IntArray(rows)
+            out.bitmap.getPixels(outPx, 0, 1, 0, 0, 1, rows)
+            val sb = StringBuilder(rows * 26 + 64)
+            sb.append("TITLE \"LumaCraft Grade\"\n")
+            sb.append("LUT_3D_SIZE ").append(size).append("\n\n")
+            for (i in 0 until rows) {
+                val c = outPx[i]
+                val r = ((c ushr 16) and 0xFF) / 255f
+                val g = ((c ushr 8) and 0xFF) / 255f
+                val b = (c and 0xFF) / 255f
+                sb.append(
+                    String.format(
+                        java.util.Locale.US,
+                        "%.6f %.6f %.6f\n", r, g, b
+                    )
+                )
+            }
+            src.recycle()
+            sb.toString()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Gray-world auto white balance analysis → (temperature, tint) slider values. */
+    fun analyzeWhiteBalance(src: Bitmap): Pair<Float, Float> {
+        val small = if (max(src.width, src.height) > 200) {
+            Bitmap.createScaledBitmap(src, 150, (150f * src.height / src.width).roundToInt().coerceAtLeast(1), true)
+        } else src
+        val px = IntArray(small.width * small.height)
+        small.getPixels(px, 0, small.width, 0, 0, small.width, small.height)
+        var sr = 0L; var sg = 0L; var sb = 0L
+        for (c in px) {
+            sr += (c ushr 16) and 0xFF
+            sg += (c ushr 8) and 0xFF
+            sb += c and 0xFF
+        }
+        val n = px.size.coerceAtLeast(1).toFloat()
+        val mr = sr / n
+        val mg = sg / n
+        val mb = sb / n
+        val maxC = max(mr, max(mg, mb)).coerceAtLeast(1f)
+        val temp = (((mb - mr) / maxC) * 60f).coerceIn(-30f, 30f)
+        val tint = ((mg - (mr + mb) / 2f) / maxC * 40f).coerceIn(-20f, 20f)
+        return temp to tint
+    }
+
     // ------------------------------------------------------------- main render
 
     fun render(
@@ -669,7 +897,7 @@ object ImageEditEngine {
         if (skinOn) applySkinSmooth(px, w, h, state.skinSmooth)
 
         // ---- clarity & texture grids (allocated only when used)
-        val needQ = abs(a.clarity) > 0.5f
+        val needQ = abs(a.clarity) > 0.5f || (maskOn && abs(state.maskClarity) > 0.5f)
         val needH = abs(a.texture) > 0.5f
         val gw = (w / 4).coerceAtLeast(1)
         val gh = (h / 4).coerceAtLeast(1)
@@ -710,6 +938,16 @@ object ImageEditEngine {
         val rLut = buildSplineLut(state.curves[CurveChannel.RED] ?: listOf(0f, 0.25f, 0.5f, 0.75f, 1f))
         val gLut = buildSplineLut(state.curves[CurveChannel.GREEN] ?: listOf(0f, 0.25f, 0.5f, 0.75f, 1f))
         val bLut = buildSplineLut(state.curves[CurveChannel.BLUE] ?: listOf(0f, 0.25f, 0.5f, 0.75f, 1f))
+
+        // ---- imported .cube LUT (cached parse) + painted selective mask grid
+        val activeLut = state.lutText?.let { LutEngine.parse(it) }
+        val lutK = (state.lutIntensity / 100f).coerceIn(0f, 1f)
+        val maskGrid = if (state.maskStrokes.isNotEmpty()) rasterizeMaskGrid(w, h, state.maskStrokes) else null
+        val maskOn = maskGrid != null
+        val maskExpGain = 2f.pow(state.maskExposure / 80f)
+        val maskWarmK = state.maskTemp * 0.5f
+        val maskSatK = state.maskSat / 100f
+        val maskClarK = state.maskClarity / 100f * 0.6f
 
         val ne = state.naturalEnhance / 100f
         val expGain = 2f.pow(a.exposure / 60f) * (1f + ne * 0.06f)
@@ -912,11 +1150,50 @@ object ImageEditEngine {
                     }
                 }
 
+                // painted selective mask adjustments (exposure / warmth / saturation / clarity)
+                if (maskOn) {
+                    val mw = maskGrid!![(y / 4).coerceAtMost(gh - 1) * gw + (x / 4).coerceAtMost(gw - 1)]
+                    if (mw > 0.02f) {
+                        if (abs(state.maskExposure) > 0.5f) {
+                            val mult = 1f + (maskExpGain - 1f) * mw
+                            r *= mult; g *= mult; b *= mult
+                        }
+                        if (abs(maskWarmK) > 0.5f) {
+                            r += maskWarmK * mw
+                            b -= maskWarmK * mw
+                        }
+                        if (abs(maskSatK) > 0.01f) {
+                            val gray = 0.299f * r + 0.587f * g + 0.114f * b
+                            val sm = (1f + maskSatK).coerceAtLeast(0f)
+                            r += (gray + (r - gray) * sm - r) * mw
+                            g += (gray + (g - gray) * sm - g) * mw
+                            b += (gray + (b - gray) * sm - b) * mw
+                        }
+                        if (abs(maskClarK) > 0.01f && qBlur != null) {
+                            val luma = 0.299f * r + 0.587f * g + 0.114f * b
+                            val hf = (luma - qBlur[(y / 4).coerceAtMost(gh - 1) * gw + (x / 4).coerceAtMost(gw - 1)]) * maskClarK * mw
+                            r += hf; g += hf; b += hf
+                        }
+                        if (state.showMaskOverlay) {
+                            val mixA = (mw * 0.35f).coerceAtMost(0.5f)
+                            r = r * (1f - mixA) + 236f * mixA
+                            g = g * (1f - mixA) + 110f * mixA
+                            b = b * (1f - mixA) + 199f * mixA
+                        }
+                    }
+                }
+
                 // per-channel curves then master curve
                 val rr = masterLut[rLut[cl(r)]].toFloat()
                 val gg = masterLut[gLut[cl(g)]].toFloat()
                 val bb2 = masterLut[bLut[cl(b)]].toFloat()
                 r = rr; g = gg; b = bb2
+
+                // imported .cube LUT (trilinear 3D / linear 1D)
+                if (activeLut != null) {
+                    val t3 = LutEngine.apply(activeLut, r, g, b, lutK)
+                    r = t3.first; g = t3.second; b = t3.third
+                }
 
                 if (vigK > 0.01f) {
                     val dx = x - halfW

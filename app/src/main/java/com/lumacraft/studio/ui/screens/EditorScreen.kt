@@ -1,6 +1,8 @@
 package com.lumacraft.studio.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +33,9 @@ import androidx.compose.material.icons.rounded.AddAPhoto
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.AutoFixHigh
 import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Brush
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Crop
 import androidx.compose.material.icons.rounded.FaceRetouchingNatural
 import androidx.compose.material.icons.rounded.Flip
@@ -73,6 +78,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -99,6 +105,7 @@ import com.lumacraft.studio.ui.components.SectionCard
 import com.lumacraft.studio.vm.BrushTool
 import com.lumacraft.studio.vm.StudioViewModel
 import com.lumacraft.studio.vm.TapTool
+import kotlinx.coroutines.launch
 
 private enum class Module(val label: String, val icon: ImageVector) {
     ADJUST("Adjust", Icons.Rounded.Tune),
@@ -106,6 +113,7 @@ private enum class Module(val label: String, val icon: ImageVector) {
     EFFECTS("Filters", Icons.Rounded.AutoFixHigh),
     PORTRAIT("Portrait", Icons.Rounded.FaceRetouchingNatural),
     RETOUCH("Retouch", Icons.Rounded.Healing),
+    MASK("Mask", Icons.Rounded.Brush),
     AI("AI", Icons.Rounded.AutoAwesome),
     TEXT("Text", Icons.Rounded.TextFields),
     GEOMETRY("Geometry", Icons.Rounded.Crop)
@@ -158,6 +166,12 @@ fun EditorScreen(vm: StudioViewModel) {
             IconButton(onClick = { vm.redo() }, enabled = st.canRedo) {
                 Icon(Icons.Rounded.Redo, "Redo", tint = if (st.canRedo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline)
             }
+            IconButton(onClick = { vm.copyLook() }, enabled = st.source != null) {
+                Icon(Icons.Rounded.ContentCopy, "Copy look", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = { vm.pasteLook() }) {
+                Icon(Icons.Rounded.ContentPaste, "Paste look", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             IconButton(onClick = { showExport = true }) {
                 Icon(Icons.Rounded.SaveAlt, "Export", tint = MaterialTheme.colorScheme.primary)
             }
@@ -205,8 +219,12 @@ fun EditorScreen(vm: StudioViewModel) {
                         }
                     } else {
                         val last = st.livePoints.last()
+                        val circleColor = when (st.brushTool) {
+                            BrushTool.MASK_PAINT, BrushTool.MASK_ERASE -> Color(0xFFFF6EC7)
+                            else -> Color.White
+                        }
                         drawCircle(
-                            Color.White,
+                            circleColor,
                             radius = st.brushRadius * size.width,
                             center = Offset(last.first * size.width, last.second * size.height),
                             style = Stroke(2f)
@@ -321,6 +339,8 @@ fun EditorScreen(vm: StudioViewModel) {
                 st.tapTool == TapTool.HEAL -> "Tap a blemish to heal it"
                 st.tapTool == TapTool.RED_EYE -> "Tap the red eye to fix it"
                 st.tapTool == TapTool.TEETH -> "Tap teeth area to whiten"
+                st.brushTool == BrushTool.MASK_PAINT -> "Paint the mask, then adjust it below"
+                st.brushTool == BrushTool.MASK_ERASE -> "Paint to erase parts of the mask"
                 st.brushTool == BrushTool.BLUR -> "Paint to blur (selective blur brush)"
                 st.brushTool == BrushTool.PIXELATE -> "Paint to pixelate"
                 st.brushTool == BrushTool.ERASE -> "Paint over an object to erase it"
@@ -359,6 +379,7 @@ fun EditorScreen(vm: StudioViewModel) {
                 Module.EFFECTS -> EffectsPanel(st, vm)
                 Module.PORTRAIT -> PortraitPanel(st, vm)
                 Module.RETOUCH -> RetouchPanel(st, vm)
+                Module.MASK -> MaskPanel(st, vm)
                 Module.AI -> AiPanel(st, vm)
                 Module.TEXT -> TextPanel(st, vm, onSelText = { selText = it }, selText = selText, onSelEmoji = { selEmoji = it }, selEmoji = selEmoji)
                 Module.GEOMETRY -> GeometryPanel(st, vm)
@@ -468,6 +489,25 @@ private fun ColorPanel(st: com.lumacraft.studio.vm.StudioUiState, vm: StudioView
     val s = st.state
     var curveChannel by remember { mutableStateOf(CurveChannel.MASTER) }
     var hslZone by remember { mutableIntStateOf(1) }
+    val context = LocalContext.current
+    val lutSaveScope = androidx.compose.runtime.rememberCoroutineScope()
+
+    val lutPick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            val text = context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() }
+            if (text != null) vm.importLut(uri.lastPathSegment ?: "lut.cube", text)
+        }
+    }
+    val lutSave = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        if (uri != null) {
+            lutSaveScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                val content = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { vm.exportLutContent() }
+                if (content != null) {
+                    context.contentResolver.openOutputStream(uri)?.use { os -> os.write(content.toByteArray()) }
+                }
+            }
+        }
+    }
 
     SectionCard("White Balance") {
         AdjSlider(vm, s.adjust, "Temperature", { it.temperature }, { adj, v -> adj.copy(temperature = v) })
@@ -515,6 +555,42 @@ private fun ColorPanel(st: com.lumacraft.studio.vm.StudioUiState, vm: StudioView
             BalancePad("Midtones", s.midWheel.x, s.midWheel.y, onChange = { x, y -> vm.edit("wheelMid") { st2 -> st2.copy(midWheel = com.lumacraft.studio.model.WheelGrade(x, y)) } })
             BalancePad("Highlights", s.highWheel.x, s.highWheel.y, onChange = { x, y -> vm.edit("wheelHi") { st2 -> st2.copy(highWheel = com.lumacraft.studio.model.WheelGrade(x, y)) } })
         }
+        Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+            Button(onClick = { vm.autoWhiteBalance() }) { Text("Auto White Balance") }
+        }
+    }
+    SectionCard(".cube LUT — Import / Export") {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
+            Button(onClick = { lutPick.launch(arrayOf("*/*")) }) { Text("Import .cube") }
+            Spacer(modifier = Modifier.width(8.dp))
+            OutlinedButton(
+                onClick = { lutSave.launch(vm.exportLutSuggestedName()) },
+                enabled = st.source != null
+            ) { Text("Export grade → .cube") }
+        }
+        if (s.lutName != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Active LUT: ${s.lutName}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            LumaSliderRow(
+                "LUT intensity",
+                s.lutIntensity,
+                100f,
+                0f..100f,
+                onChange = { v -> vm.edit("lutK") { st2 -> st2.copy(lutIntensity = v) } },
+                onReset = { vm.edit { st2 -> st2.copy(lutIntensity = 100f) } }
+            )
+        }
+        Text(
+            "3D trilinear engine (up to 33³). Export generates a real .cube from your current grade — usable in Lightroom & video editors.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
     }
 }
 
@@ -654,6 +730,35 @@ private fun RetouchPanel(st: com.lumacraft.studio.vm.StudioUiState, vm: StudioVi
         }
         TextButton(onClick = { vm.clearHealSpots() }, modifier = Modifier.padding(horizontal = 16.dp)) {
             Text("Clear all retouch strokes & spots")
+        }
+    }
+}
+
+@Composable
+private fun MaskPanel(st: com.lumacraft.studio.vm.StudioUiState, vm: StudioViewModel) {
+    SectionCard("Painted Selective Mask") {
+        ChipRow(
+            options = listOf(BrushTool.NONE, BrushTool.MASK_PAINT, BrushTool.MASK_ERASE),
+            selected = st.brushTool,
+            label = { when (it) { BrushTool.MASK_PAINT -> "Paint Mask"; BrushTool.MASK_ERASE -> "Erase Mask"; else -> "Off" } },
+            onSelect = { vm.setBrushTool(it) }
+        )
+        LumaSliderRow("Brush size", st.brushRadius * 100f, 5f, 2f..15f, onChange = { v -> vm.setBrushRadius(v / 100f) })
+        Text(
+            "Paint over the photo, then use the sliders below — adjustments apply only inside your painted mask. Fully non-destructive.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
+    }
+    SectionCard("Mask Adjustments") {
+        LumaSliderRow("Mask exposure", st.state.maskExposure, 0f, -100f..100f, onChange = { v -> vm.edit("mExp") { s -> s.copy(maskExposure = v) } }, onReset = { vm.edit { s -> s.copy(maskExposure = 0f) } })
+        LumaSliderRow("Mask warmth", st.state.maskTemp, 0f, -100f..100f, onChange = { v -> vm.edit("mTem") { s -> s.copy(maskTemp = v) } }, onReset = { vm.edit { s -> s.copy(maskTemp = 0f) } })
+        LumaSliderRow("Mask saturation", st.state.maskSat, 0f, -100f..100f, onChange = { v -> vm.edit("mSat") { s -> s.copy(maskSat = v) } }, onReset = { vm.edit { s -> s.copy(maskSat = 0f) } })
+        LumaSliderRow("Mask clarity", st.state.maskClarity, 0f, -100f..100f, onChange = { v -> vm.edit("mCla") { s -> s.copy(maskClarity = v) } }, onReset = { vm.edit { s -> s.copy(maskClarity = 0f) } })
+        LumaSwitchRow("Show mask overlay", "Highlight the painted area", st.state.showMaskOverlay) { v -> vm.edit { s -> s.copy(showMaskOverlay = v) } }
+        TextButton(onClick = { vm.clearMask() }, modifier = Modifier.padding(horizontal = 16.dp)) {
+            Text("Clear mask")
         }
     }
 }

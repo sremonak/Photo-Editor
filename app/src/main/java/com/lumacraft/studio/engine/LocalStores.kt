@@ -17,6 +17,7 @@ import com.lumacraft.studio.model.FrameStyle
 import com.lumacraft.studio.model.GeoState
 import com.lumacraft.studio.model.HealSpot
 import com.lumacraft.studio.model.HslZone
+import com.lumacraft.studio.model.MaskPaintStroke
 import com.lumacraft.studio.model.PresetItem
 import com.lumacraft.studio.model.RecentItem
 import com.lumacraft.studio.model.SplitTone
@@ -155,6 +156,25 @@ object StateJson {
 
         o.put("frame", s.frame.ordinal)
         o.put("watermark", s.watermark)
+
+        o.put("lutName", s.lutName ?: "")
+        o.put("lutText", s.lutText ?: "")
+        o.put("lutIntensity", s.lutIntensity.toDouble())
+
+        val mstrokes = JSONArray()
+        s.maskStrokes.forEach { ms ->
+            val arr = JSONArray()
+            arr.put(if (ms.erase) 1 else 0)
+            arr.put(ms.radius.toDouble())
+            ms.points.forEach { p -> arr.put(p.first.toDouble()); arr.put(p.second.toDouble()) }
+            mstrokes.put(arr)
+        }
+        o.put("maskStrokes", mstrokes)
+        o.put("maskExposure", s.maskExposure.toDouble())
+        o.put("maskTemp", s.maskTemp.toDouble())
+        o.put("maskSat", s.maskSat.toDouble())
+        o.put("maskClarity", s.maskClarity.toDouble())
+        o.put("showMaskOverlay", s.showMaskOverlay)
         return o.toString()
     }
 
@@ -314,6 +334,22 @@ object StateJson {
             }
         }
 
+        val maskStrokes = buildList {
+            val arr = o.optJSONArray("maskStrokes") ?: JSONArray()
+            for (i in 0 until arr.length()) {
+                val s = arr.getJSONArray(i)
+                val erase = s.optInt(0, 0) == 1
+                val radius = s.optDouble(1, 0.05).toFloat()
+                val pts = mutableListOf<Pair<Float, Float>>()
+                var k = 2
+                while (k + 1 < s.length()) {
+                    pts.add(s.getDouble(k).toFloat() to s.getDouble(k + 1).toFloat())
+                    k += 2
+                }
+                add(MaskPaintStroke(pts, radius, erase))
+            }
+        }
+
         EditState(
             adjust = adjust,
             split = split,
@@ -335,6 +371,15 @@ object StateJson {
             textLayers = texts,
             emojiLayers = emojis,
             drawStrokes = draws,
+            lutName = o.optString("lutName", "").ifEmpty { null },
+            lutText = o.optString("lutText", "").ifEmpty { null },
+            lutIntensity = o.optDouble("lutIntensity", 100.0).toFloat(),
+            maskStrokes = maskStrokes,
+            maskExposure = o.optDouble("maskExposure", 0.0).toFloat(),
+            maskTemp = o.optDouble("maskTemp", 0.0).toFloat(),
+            maskSat = o.optDouble("maskSat", 0.0).toFloat(),
+            maskClarity = o.optDouble("maskClarity", 0.0).toFloat(),
+            showMaskOverlay = o.optBoolean("showMaskOverlay", false),
             frame = FrameStyle.entries.getOrElse(o.optInt("frame", 0)) { FrameStyle.NONE },
             watermark = o.optString("watermark", "")
         )

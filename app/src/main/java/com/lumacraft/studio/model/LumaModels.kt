@@ -104,6 +104,13 @@ data class BrushStroke(
     val points: List<Pair<Float, Float>>
 )
 
+/** Painted selective-adjustment mask stroke (Lightroom-style mask brush). */
+data class MaskPaintStroke(
+    val points: List<Pair<Float, Float>>,
+    val radius: Float,
+    val erase: Boolean
+)
+
 // ---------------------------------------------------------------- overlays
 
 data class TextLayer(
@@ -165,6 +172,17 @@ data class EditState(
     val textLayers: List<TextLayer> = emptyList(),
     val emojiLayers: List<EmojiLayer> = emptyList(),
     val drawStrokes: List<DrawStroke> = emptyList(),
+    // imported .cube LUT (full text stored; parsed+cached by the engine)
+    val lutName: String? = null,
+    val lutText: String? = null,
+    val lutIntensity: Float = 100f,
+    // painted selective mask + mask-linked adjustments
+    val maskStrokes: List<MaskPaintStroke> = emptyList(),
+    val maskExposure: Float = 0f,
+    val maskTemp: Float = 0f,
+    val maskSat: Float = 0f,
+    val maskClarity: Float = 0f,
+    val showMaskOverlay: Boolean = false,
     val frame: FrameStyle = FrameStyle.NONE,
     val watermark: String = ""
 )

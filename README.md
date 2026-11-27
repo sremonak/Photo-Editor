@@ -34,6 +34,16 @@ Every push is built by GitHub Actions into a **signed Release APK** and publishe
 - **Selective blur brush**, **pixelate brush**, **object eraser**, **freehand drawing** (colors + width).
 - **Text overlays** (7 fonts, size/color/bold/italic/align/opacity, drag-to-position), **emoji stickers**, **watermark**, **frames** (White / Dark / Polaroid).
 
+### Pro color pipeline extras
+- **`.cube` LUT import** — Adobe .cube 3D (up to 33³) & 1D (up to 4096) support with a real trilinear-interpolation engine and intensity control.
+- **`.cube` LUT export** — the current grade is rendered through a neutral RGB cube and re-encoded as a genuine .cube file usable in Lightroom, Photoshop or video editors.
+- **Painted selective mask** (Lightroom-style) — brush-paint a soft mask (with eraser), then apply mask-linked Exposure / Warmth / Saturation / Clarity; overlay visualization; fully non-destructive & saved in presets/sessions.
+- **Auto White Balance** — gray-world analysis derives temperature + tint.
+- **Copy / Paste look** — the full edit recipe travels through the system clipboard as JSON (share looks between photos or friends).
+
+### Camera capture (CameraX)
+- In-app camera: tap-to-focus exposure, EV compensation slider, flash (off/on/auto), 3s/10s timer with countdown, rule-of-thirds grid, front/back switch, aspect presets (1:1, 4:5, 16:9, 9:16), captured photos flow straight into the editor.
+
 ### Studio features
 - **Collage Studio**: 24 layouts, spacing + corner radius, background colors, 7 aspect ratios, per-cell drag repositioning, caption, high-res export.
 - **Batch Editing**: apply the current look to up to 9 photos, format/quality/resolution options, live progress + cancel.
@@ -67,18 +77,19 @@ Every push is built by GitHub Actions into a **signed Release APK** and publishe
 ## Technical architecture
 
 - **UI**: Jetpack Compose Material 3, light + dark schemes, MVVM (`StudioViewModel`, `StateFlow<StudioUiState>`), Coroutines for all image work (UI thread never blocks).
-- **Engine** (`ImageEditEngine.kt`): single-pass IntArray pixel pipeline — WB/tone/curves/HSL/split-tone/wheels → clarity/texture via blurred luma grids → grain/vignette → sharpen unsharp → ML Kit bokeh/cutout passes → Canvas overlay baking (text/emoji/draw/frames/watermark).
+- **Engine** (`ImageEditEngine.kt`): single-pass IntArray pixel pipeline — WB/tone/curves → **trilinear .cube LUT** → HSL/split-tone/wheels → clarity/texture via blurred luma grids → **painted-mask adjustments** → grain/vignette → sharpen unsharp → ML Kit bokeh/cutout passes → Canvas overlay baking (text/emoji/draw/frames/watermark).
 - **Storage**: lightweight SharedPreferences + JSON vaults (presets, sessions, recents, settings) — no heavyweight database for tiny config data.
 - **Memory safety**: sampled bitmap decoding, preview pipeline capped at 760 px, export pipeline at ≤4096 px, OOM-guarded upscale (skips beyond 36 MP).
+- **APK size**: per-ABI splits (`arm64-v8a` ≈ one third of the universal APK) — install the split matching your phone, or universal.
 
 ## Known limitations (documented, not hidden)
 
 1. **AI Colorization is disabled** — real colorization needs a cloud/onnx model we deliberately don't ship (privacy + APK size). Clearly labeled in the UI.
-2. **Camera capture is not included** — the spec marked it optional; use your camera app and open the photo from the gallery (ACTION_EDIT/SEND are supported).
-3. **Camera-RAW decode** uses the platform decoder (JPEG/PNG/WebP/HEIC where the device supports it); proprietary RAW (.CR3/.NEF…) demosaicing is out of scope — import them via a converter or use DNG if your device supports it.
-4. **Batch exports skip overlay layers** (text/emoji/drawing are per-photo creative tools).
-5. **Collage** uses auto center-crop framing with drag-to-reposition pan (no per-cell zoom UI yet).
-6. **Skin smoothing** is a heuristic skin-tone algorithm — excellent for portraits, not a face-mesh retoucher (no face landmark detection).
+2. **Camera-RAW decode** uses the platform decoder (JPEG/PNG/WebP/HEIC where the device supports it); proprietary RAW (.CR3/.NEF…) demosaicing is out of scope — import them via a converter or use DNG if your device supports it.
+3. **Batch exports skip overlay layers** (text/emoji/drawing are per-photo creative tools).
+4. **Collage** uses auto center-crop framing with drag-to-reposition pan (no per-cell zoom UI yet).
+5. **Skin smoothing** is a heuristic skin-tone algorithm — excellent for portraits, not a face-mesh retoucher (no face landmark detection).
+6. **LUT export quantizes to 8-bit** per channel (Android Bitmap pipeline) — fine for stylized grades; film-scanner precision LUTs need a 16-bit host.
 7. Presets/sessions are stored on-device (SharedPreferences JSON) — clearing app data clears them.
 
 ## Third-party components (all Apache 2.0)
