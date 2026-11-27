@@ -32,7 +32,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.AutoFixHigh
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Crop
-import androidx.compose.material.icons.rounded.FaceRetouchNatural
+import androidx.compose.material.icons.rounded.FaceRetouchingNatural
 import androidx.compose.material.icons.rounded.Flip
 import androidx.compose.material.icons.rounded.Healing
 import androidx.compose.material.icons.rounded.Palette
@@ -104,7 +104,7 @@ private enum class Module(val label: String, val icon: ImageVector) {
     ADJUST("Adjust", Icons.Rounded.Tune),
     COLOR("Color", Icons.Rounded.Palette),
     EFFECTS("Filters", Icons.Rounded.AutoFixHigh),
-    PORTRAIT("Portrait", Icons.Rounded.FaceRetouchNatural),
+    PORTRAIT("Portrait", Icons.Rounded.FaceRetouchingNatural),
     RETOUCH("Retouch", Icons.Rounded.Healing),
     AI("AI", Icons.Rounded.AutoAwesome),
     TEXT("Text", Icons.Rounded.TextFields),
@@ -268,8 +268,8 @@ fun EditorScreen(vm: StudioViewModel) {
                             val newZoom = (zoom * gestureZoom).coerceIn(1f, 6f)
                             zoom = newZoom
                             if (newZoom > 1f) {
-                                ox = (ox + pan.x).coerceIn(-size.width, size.width)
-                                oy = (oy + pan.y).coerceIn(-size.height, size.height)
+                                ox = (ox + pan.x).coerceIn(-size.width.toFloat(), size.width.toFloat())
+                                oy = (oy + pan.y).coerceIn(-size.height.toFloat(), size.height.toFloat())
                             } else {
                                 ox = 0f
                                 oy = 0f

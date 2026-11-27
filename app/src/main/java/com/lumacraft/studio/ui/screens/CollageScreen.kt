@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -247,6 +248,7 @@ fun CollageScreen(vm: StudioViewModel) {
 
 @Composable
 private fun TemplateThumb(cells: List<android.graphics.RectF>, selected: Boolean, onClick: () -> Unit) {
+    val lineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
     Box(
         modifier = Modifier
             .size(62.dp)
@@ -258,7 +260,7 @@ private fun TemplateThumb(cells: List<android.graphics.RectF>, selected: Boolean
         Canvas(modifier = Modifier.fillMaxSize().padding(7.dp)) {
             cells.forEach { cell ->
                 drawRoundRect(
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                    color = lineColor,
                     topLeft = Offset(cell.left * size.width, cell.top * size.height),
                     size = Size(cell.width() * size.width, cell.height() * size.height),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(3f, 3f),

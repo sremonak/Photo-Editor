@@ -1146,7 +1146,7 @@ object ImageEditEngine {
                     resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
                         val exif = ExifInterface(pfd.fileDescriptor)
                         exif.setAttribute(ExifInterface.TAG_SOFTWARE, "LumaCraft Photo Studio")
-                        if (cameraInfo.isNotBlank()) exif.setAttribute(ExifInterface.TAG_IMAGEDESCRIPTION, cameraInfo)
+                        if (cameraInfo.isNotBlank()) exif.setAttribute(ExifInterface.TAG_IMAGE_DESCRIPTION, cameraInfo)
                         exif.saveAttributes()
                     }
                 } catch (_: Exception) {
